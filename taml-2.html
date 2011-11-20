@@ -1,0 +1,33 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<script type="text/javascript" src="taml.0.1.1.js"></script>
+
+<script>DEBUG=true</script>
+
+<taml xmlns:ren="org.noben.widgets.renderers">
+
+    <application title="Hello, World!">
+
+        <background color="#344556">
+            
+            <image id="logo" source="{*appResources.logoImage*}"></image>
+
+            <hgroup left="5" right="5" top="5" bottom="5"> 
+                <border color.right="#556677" thick.right="1" width="250" left="0">
+                    <list>
+                        <data>
+                            <object name.first="Nicolas" name.last="Noben"></object>
+                            <object name.first="Pat" name.last="LeBlanc"></object>
+                        </data>
+                        <renderer>
+                            <ren:mylistrenderer />  
+                        </renderer>
+                    </list>
+                </border>
+            </hgroup>
+
+        </background>
+
+    </application>
+</taml>
