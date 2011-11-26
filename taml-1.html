@@ -1,30 +1,27 @@
 <!DOCTYPE html>
-
 <script type="text/javascript" src="taml.js"></script>
 
 <taml   xmlns:t="http://schema.taml-lang.org/0.1/"
-        xmlns:ren="org.noben.widgets">
+        xmlns:ren="org.noben.widgets"
+        title='yello!'>
 
-    <t:application title='yello!'>
+    <t:application>
 
-        <t:group brush="#ffcc00" background="#344556">
-            <group.layout>
-                <verticalLayout gap="5" />
-            </group.layout>
+        <t:group border='#ffcc00'>
+            <t:layout layout='vertical' gap='5'></t:layout>
 
             <t:image id="logo" source="{*appResources.logoImage*}"></t:image>
 
             <t:group left="5" top="5" bottom="5"
                      color.right="#556677" thick.right="1" width="250"> 
-                    <t:list id='myList'>
-                        <t:list.data>
-                            <t:object name.first="Nicolas" name.last="Noben"></t:object>
-                            <t:object name.first="Pat" name.last="LeBlanc"></t:object>
-                        </t:list.data>
-                        <t:list.renderer>
-                            <ren:mylistrenderer width="max" />
-                        </t:list.renderer>
-                    </t:list>
+                <t:list id='myList'>
+                    <t:data>
+                        <t:object first="Nicolas" last="Noben"></t:object>
+                    </t:data>
+                    <t:renderer>
+                        <ren:mylistrenderer width="max" />
+                    </t:renderer>
+                </t:list>
             </t:group>
 
         </t:group>
@@ -32,3 +29,5 @@
     </t:application>
 
 </taml>
+
+

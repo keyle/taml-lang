@@ -3,25 +3,11 @@
 if(typeof DEBUG == "undefined") DEBUG=false;
 
 // load jquery
-var script = document.createElement('script');
-script.type = 'text/javascript';
-script.src = 'http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js';
-document.documentElement.appendChild(script);
+var jqscript = document.createElement('script');
+jqscript.type = 'text/javascript';
+jqscript.src = 'http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js';
+document.getElementsByTagName('head')[0].appendChild(jqscript);
 
-var script2 = document.createElement('script');
-script2.type = 'text/javascript';
-script2.src = "http://www.fyneworks.com/jquery/xml-to-json/jquery.xml2json.pack.js";
-document.documentElement.appendChild(script2);
-
-
-    // -. detect xml
-    // 1. detect (double) attributes
-    // 2. detect bad tags
-    // 3. detect bad attributes for tag
-    // 4. detect bad children for tags (if any, if many, if matches)
-    // 5. apply conversion and verbatim transcriptions
-    // 6. write dom
-    // 7. apply databinding model
 
 var app = {
 
@@ -30,15 +16,20 @@ var app = {
     counter: 0,
     dom: {},
 
-    preinit: function()
+    windowonload: function()
     {
-        if(DEBUG)
-            log('<TAML> IN DEBUG MODE...');
-        else
-            log('DEBUG? ' + DEBUG);
-
-        jq = jQuery.noConflict(true);
-        jq(document).ready(app.init);
+        try
+        {
+            jq = jQuery.noConflict(true);
+            jq(document).ready(app.init);
+        }
+        catch(e)
+        {   
+            // "jQuery" is undefined. Happens in IE.
+            // IE9 runs window.onload too early, before the code above could load jquery
+            // wait at 30FPS and try again...
+            setTimeout(app.windowonload, 33); 
+        }
     },
 
     init: function()
@@ -47,18 +38,16 @@ var app = {
 
         try { app.tamlXML = jq.parseXML(app.tamlString); } catch(e) { throw errors.invalidXML }
         
-        app.dom = jq.xml2json(app.tamlXML);
+        app.dom = helpers.xml2Object(app.tamlXML);
 
         helpers.clearAllHtml();
 
-        //parser.loopLevelByLevel(app.dom);
-
-        //parser.traverseobjects(app.dom, parser.enrichobject);
-        
-        //parser.traverseobjects(app.dom, parser.log);
-
+        parser.traverseobjects(app.dom, parser.enrichobject);
         parser.traverseobjects(app.dom, parser.generateobject);
-
+        parser.traverseobjects(app.dom, parser.generateHTML);
+        
+        helpers.setHtml(html);
+        //parser.traverseobjects(app.dom, parser.log);
         /*parser.traverseobjects(app.dom, function(key, o) {
             
             if(o._tamlId == 11)
@@ -119,52 +108,87 @@ var parser = {
 
     enrichobject: function(key, o)
     {
+        if(helpers.keyIsSystemObject(key))
+            return;
+
         o._tamlId = ++app.counter;
         o._tamlType = key;
+        
     },
 
+    // loop through taml objects to generate html
     generateobject: function(key, o)
     {
-        // loop through object to generate
-        for (var i in o)
-        {
-            if(typeof(o[i]) != "object")
-            {
-                // we have an attribute
-                log('({0}) : {1} - {2}'.format(key, i, o[i]));
-                // append attribute to list
-            }
-        }
+        if(helpers.keyIsSystemObject(key))
+            return;
 
-        if(generator[key])
-            o._html = generator[key](key, o);
-        else
-            log("({0}) - {1}".format(key, errors.invalidTaml)); // throw later
-        
-        log('');
+        // if object exists in the generator, run its conversion method
+        // ":" is now "_"
+        if(tagGenerators[key.removeNs()])
+            o._html = tagGenerators[key.removeNs()](key, o);
+        else log("<{0}> : {1}".format(key, "unknown tag - deal with it later")); // throw later
+    },
+
+    // grabs the html out of all the objects
+    generateHTML: function(key, o)
+    {
+        if(o._html)
+            html = html.split('@^@').join('\n\t'+o._html+'\n');
     },
 };
 
+var html = '@^@';
 
+var tagGenerators = {
 
-
-var generator = {
-
-    application: function(key, o)
+    taml: function(key, o)
     {
-        return "<div id='application'>@TAML@</div>";
+        return "<style>html, body, div, ul {width: 100%; height: 100%; margin: 0; padding: 0;}</style>@^@";
     },
 
-    group: function(key, o)
+    t_application: function(key, o)
     {
-        var html = "<div " + "style='background: "+o.color+"'" + ">@TAML@</div>";
-
-        return html;
+        return "<div id='application{0}' style='background: red; opacity: 0.2'>@^@</div>".format(o._tamlId);
     },
 
-    image: function(key, o)
+    // all t:group run this generator
+    t_group: function(key, o)
     {
-        
+        // cycle all attributes
+        for(var a in o.attr)
+        {
+            
+        }
+
+        //var html = "<div " + "style='background: "+o.attrs.background+"'" + ">@TAML@</div>";
+        //return html;
+
+        return "<div id='group{0}' style='background: green; opacity: 0.2'>@^@</div>".format(o._tamlId);
+    },
+
+    t_layout: function(key, o)
+    {
+        return;
+    },
+
+    t_image: function(key, o)
+    {
+        return "<img id='image{0}' />@^@".format(o._tamlId);
+    },
+
+    t_list: function(key, o)
+    {
+        return "<div id='list{0}'><ul>@^@</ul></div>".format(o._tamlId);
+    },
+    
+    t_renderer: function(key, o)
+    {
+        return "<li id='itemrenderer{0}'>@^@</li>".format(o._tamlId);
+    },
+
+    t_object: function(key, o)
+    {
+        return;
     },
 };
 
@@ -175,12 +199,85 @@ var helpers = {
 
     getTamlStringFromHtml: function()
     {
-        return jq('taml').parent().detach().html();
+        return jq('taml').parent().html();
+    },
+
+    keyIsSystemObject: function(key)
+    {
+        return (key == 'objs' || key == 'attrs');
     },
 
     clearAllHtml: function()
     {
-        jq('*').remove();
+        //jq('*').remove();
+    },
+
+    setHtml: function(html)
+    {
+        jq(document.body).empty().append(html);
+    },
+
+    xml2Object: function(xml)
+    {
+        var obj = {};
+
+        if (xml.nodeType == 1) 
+        { // element
+
+            if (xml.attributes.length > 0) 
+            {
+                obj["attrs"] = {};
+                
+                for (var j = 0; j < xml.attributes.length; j++) 
+                {
+                    var attribute = xml.attributes.item(j);
+                    obj["attrs"][attribute.nodeName] = attribute.nodeValue;
+                }
+            }
+        } 
+        else if (xml.nodeType == 3) 
+        { // text
+            obj = xml.nodeValue;
+        }
+
+        // do children
+        if (xml.hasChildNodes()) 
+        {
+            obj["objs"] = {};
+
+            for(var i = 0; i < xml.childNodes.length; i++) 
+            {
+                var item = xml.childNodes.item(i);
+                var nodeName = item.nodeName;
+                
+                if(nodeName == '#text')
+                {
+                    delete obj[nodeName];
+                    continue;
+                }
+
+                if (typeof(obj[nodeName]) == "undefined") 
+                {
+                    obj["objs"][nodeName] = helpers.xml2Object(item);
+                } 
+                else 
+                {
+                    if (typeof(obj[nodeName].length) == "undefined") 
+                    {
+                        var old = obj[nodeName];
+                        obj[nodeName] = [];
+                        obj[nodeName].push(old);
+                    }
+
+                    if(nodeName != '#text')
+                    {
+                        obj[nodeName].push(helpers.xml2Object(item));
+                    }
+                }
+            }
+        }
+
+        return obj;
     },
 }
 
@@ -194,19 +291,9 @@ var errors = {
     shortTag:           "<TAML> Short tag closing, ie. '/>' is currently unsupported. Please close...</tag> the tag for now."
 };
 
-var taml_lang = {
-    tags: [
-        'taml',
-        'background',
-        'hgroup',
-        'border',
-        'list'
-    ]
-};
-
 
 var jq; // jquery
-window.onload = app.preinit;
+window.onload = app.windowonload;
 
 
 String.prototype.contains = function(that)
@@ -224,7 +311,18 @@ String.prototype.format = function() {
     return s;
 };
 
+String.prototype.removeNs = function() {
+    
+    return this.split(':').join('_');
+}
+
 function log(str)
 {
     console.log(str);
 }
+
+String.prototype.ltrim=function()
+    {return this.replace(/^\s+/,'');}
+
+String.prototype.rtrim=function()
+    {return this.replace(/\s+$/,'');}
