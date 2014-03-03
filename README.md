@@ -1,5 +1,5 @@
 ## taml-lang
 
-Work in progress.
+(project was an experiment and is now retired)
 
 MIT License.
